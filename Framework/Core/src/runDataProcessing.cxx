@@ -9,6 +9,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 #include <stdexcept>
+#include "Framework/DataInspector.h"
 #include "Framework/BoostOptionsRetriever.h"
 #include "Framework/CallbacksPolicy.h"
 #include "Framework/ChannelConfigurationPolicy.h"
@@ -1099,6 +1100,9 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
   std::unique_ptr<FairMQDeviceProxy> deviceProxy;
   std::unique_ptr<DeviceContext> deviceContext;
 
+  int index = std::distance(argv, std::find_if(argv, argv + argc, isInspectorArgument));
+  bool isInspected = true;//index + 1 < argc && shouldBeInspected(argv[index + 1], spec);
+
   auto afterConfigParsingCallback = [&simpleRawDeviceService,
                                      &runningWorkflow,
                                      ref,
@@ -1109,7 +1113,8 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
                                      &deviceProxy,
                                      &processingPolicies,
                                      &deviceContext,
-                                     &loop](fair::mq::DeviceRunner& r) {
+                                     &loop,
+                                     &isInspected](fair::mq::DeviceRunner& r) {
     ServiceRegistryRef serviceRef = {serviceRegistry};
     simpleRawDeviceService = std::make_unique<SimpleRawDeviceService>(nullptr, spec);
     serviceRef.registerService(ServiceRegistryHelpers::handleForService<RawDeviceService>(simpleRawDeviceService.get()));
@@ -1135,6 +1140,8 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
     serviceRef.get<RawDeviceService>().setDevice(device.get());
     r.fDevice = std::move(device);
     fair::Logger::SetConsoleColor(false);
+
+    r.fConfig.SetProperty(INSPECTOR_ACTIVATION_PROPERTY, isInspected);
 
     /// Create all the requested services and initialise them
     for (auto& service : spec.services) {
@@ -2563,6 +2570,11 @@ int doMain(int argc, char** argv, o2::framework::WorkflowSpec const& workflow,
   visibleOptions.add(executorOptions);
 
   auto physicalWorkflow = workflow;
+
+  if (std::any_of(argv, argv + argc, isInspectorArgument)) {
+    addDataInspector(physicalWorkflow);
+  }
+
   std::map<std::string, size_t> rankIndex;
   // We remove the duplicates because for the moment child get themself twice:
   // once from the actual definition in the child, a second time from the

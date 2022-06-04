@@ -121,6 +121,7 @@ o2_add_library(Framework
                        src/TextDriverClient.cxx
                        src/TimesliceIndex.cxx
                        src/DataOutputDirector.cxx
+                       src/DataInspector.cxx
                        src/Task.cxx
                        src/Array2D.cxx
                        src/Variant.cxx
