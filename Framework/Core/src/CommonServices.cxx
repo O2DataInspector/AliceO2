@@ -10,6 +10,7 @@
 // or submit itself to any jurisdiction.
 #include "Framework/CommonServices.h"
 #include "Framework/AsyncQueue.h"
+#include "Framework/DataInspectorService.h"
 #include "Framework/ParallelContext.h"
 #include "Framework/ControlService.h"
 #include "Framework/DriverClient.h"
@@ -796,6 +797,18 @@ o2::framework::ServiceSpec CommonServices::dataAllocatorSpec()
     .kind = ServiceKind::Stream};
 }
 
+o2::framework::ServiceSpec CommonServices::dataInspectorServiceSpec()
+{
+    return ServiceSpec{
+        .name = "data-inspector-service",
+        .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
+            auto* diService = new DataInspectorService("");
+            return ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), diService};
+            },
+            .configure = noConfiguration(),
+            .kind = ServiceKind::Global};
+}
+
 /// Split a string into a vector of strings using : as a separator.
 std::vector<ServiceSpec> CommonServices::defaultServices(int numThreads)
 {
@@ -823,7 +836,8 @@ std::vector<ServiceSpec> CommonServices::defaultServices(int numThreads)
     ArrowSupport::arrowBackendSpec(),
     CommonMessageBackends::stringBackendSpec(),
     decongestionSpec(),
-    CommonMessageBackends::rawBufferBackendSpec()};
+    CommonMessageBackends::rawBufferBackendSpec(),
+    dataInspectorServiceSpec()};
 
   std::string loadableServicesStr;
   // Do not load InfoLogger by default if we are not at P2.
