@@ -54,6 +54,7 @@
 #include "Framework/WorkflowSpecNode.h"
 #include "Framework/GuiCallbackContext.h"
 #include "Framework/DeviceContext.h"
+#include "Framework/DataInspectorService.h"
 #include "ControlServiceHelpers.h"
 #include "ProcessingPoliciesHelpers.h"
 #include "DriverServerContext.h"
@@ -1100,9 +1101,6 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
   std::unique_ptr<FairMQDeviceProxy> deviceProxy;
   std::unique_ptr<DeviceContext> deviceContext;
 
-  int index = std::distance(argv, std::find_if(argv, argv + argc, isInspectorArgument));
-  bool isInspected = true;//index + 1 < argc && shouldBeInspected(argv[index + 1], spec);
-
   auto afterConfigParsingCallback = [&simpleRawDeviceService,
                                      &runningWorkflow,
                                      ref,
@@ -1113,8 +1111,7 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
                                      &deviceProxy,
                                      &processingPolicies,
                                      &deviceContext,
-                                     &loop,
-                                     &isInspected](fair::mq::DeviceRunner& r) {
+                                     &loop](fair::mq::DeviceRunner& r) {
     ServiceRegistryRef serviceRef = {serviceRegistry};
     simpleRawDeviceService = std::make_unique<SimpleRawDeviceService>(nullptr, spec);
     serviceRef.registerService(ServiceRegistryHelpers::handleForService<RawDeviceService>(simpleRawDeviceService.get()));
@@ -1140,8 +1137,6 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
     serviceRef.get<RawDeviceService>().setDevice(device.get());
     r.fDevice = std::move(device);
     fair::Logger::SetConsoleColor(false);
-
-    r.fConfig.SetProperty(INSPECTOR_ACTIVATION_PROPERTY, isInspected);
 
     /// Create all the requested services and initialise them
     for (auto& service : spec.services) {
@@ -1676,6 +1671,42 @@ int runStateMachine(DataProcessorSpecs const& workflow,
                                                             driverInfo.resourcesMonitoringInterval,
                                                             varmap["channel-prefix"].as<std::string>(),
                                                             overrides);
+
+          if(varmap.count("inspector")) {
+            LOG(info) << "INSPECTOR POLICY";
+            for(auto& device : runningWorkflow.devices) {
+              if(device.name.find("internal") != std::string::npos || device.name == "DataInspector")
+                continue;
+
+              auto& oldPolicy = device.sendingPolicy;
+              device.sendingPolicy = SendingPolicy{
+                "data-inspector-policy",
+                nullptr,
+                [oldPolicy, &serviceRegistry](FairMQDeviceProxy& proxy, FairMQParts& parts, ChannelIndex channelIndex) -> void{
+                  auto& diService = serviceRegistry.get<DataInspectorService>();
+
+                  if(diService.isInspected()) {
+                    if(!diService.isDataInspectorChannelSet()){
+                      int i=0;
+                      for(;i<proxy.getNumOutputChannels(); i++){
+                        if(proxy.getOutputChannel(ChannelIndex{i})->GetName().find("to_DataInspector") != std::string::npos)
+                          break;
+                      }
+                      diService.setDataInspectorChannel(ChannelIndex{i});
+                    }
+
+                    LOG(info) << "SEND COPY";
+                    sendCopyToDataInspector(&proxy, parts, diService.getDataInspectorChannel());
+                  }
+
+                  oldPolicy.send(proxy, parts, channelIndex);
+                }
+              };
+            }
+          } else {
+            LOG(info) << "NO INSPECTOR";
+          }
+
           metricProcessingCallbacks.clear();
           for (auto& device : runningWorkflow.devices) {
             for (auto& service : device.services) {
