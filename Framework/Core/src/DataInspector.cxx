@@ -33,34 +33,8 @@
 
 using namespace rapidjson;
 
-/* Replaces (in place) all occurences of `pattern` in `data` with `substitute`.
-   `substitute` may be wider than `pattern`. */
-static void replaceAll(
-  std::string& data,
-  const std::string& pattern,
-  const std::string& substitute)
+namespace o2::framework::DataInspector
 {
-  std::string::size_type pos = data.find(pattern);
-  while (pos != std::string::npos) {
-    data.replace(pos, pattern.size(), substitute);
-    pos = data.find(pattern, pos + substitute.size());
-  }
-}
-
-namespace o2::framework
-{
-  bool isDataInspectorActive(FairMQDevice &device)
-  {
-    try {
-      if (device.fConfig == nullptr) {
-        return false;
-      }
-      return device.fConfig->GetProperty<bool>(INSPECTOR_ACTIVATION_PROPERTY);
-    } catch (...) {
-      return false;
-    }
-  }
-
   FairMQParts copyMessage(FairMQParts &parts)
   {
     FairMQParts partsCopy;
@@ -73,7 +47,7 @@ namespace o2::framework
     return partsCopy;
   }
 
-  void sendCopyToDataInspector(FairMQDeviceProxy* proxy, FairMQParts& parts, ChannelIndex channelIndex)
+  void sendCopy(FairMQDeviceProxy* proxy, FairMQParts& parts, ChannelIndex channelIndex)
   {
     auto copy = copyMessage(parts);
     proxy->getOutputChannel(channelIndex)->Send(copy);
@@ -210,13 +184,16 @@ namespace o2::framework
       };
     }};
 
-    for (const DataProcessorSpec &device: workflow) {
+    // Connect every output to DataInspector and inject interceptor to check for messages from proxy
+    for (DataProcessorSpec &device: workflow) {
       if (isNonInternalDevice(device)) {
         for (const OutputSpec &output: device.outputs) {
           if (isNonEmptyOutput(output)) {
             dataInspector.inputs.emplace_back(asInputSpec(output));
           }
         }
+
+        injectOnProcessInterceptor(device);
       }
     }
 

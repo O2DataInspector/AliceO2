@@ -838,7 +838,10 @@ void WorkflowHelpers::constructGraph(const WorkflowSpec& workflow,
 
   std::vector<bool> matches(constOutputs.size());
   for (size_t consumer = 0; consumer < workflow.size(); ++consumer) {
-    if (isInspectorDevice(workflow[consumer])) {
+    // Because messages "travel" along linked list of consumers (forwards),
+    // if we don't connect outputs directly to DataInspector, we won't be able to decide
+    // whether we want to send it or not in sending policy.
+    if (DataInspector::isInspectorDevice(workflow[consumer])) {
       std::vector<size_t> ids(availableOutputsInfo.size());
       std::transform(std::begin(availableOutputsInfo), std::end(availableOutputsInfo),
                      std::begin(ids), [](LogicalOutputInfo& i) { return i.outputGlobalIndex; });
@@ -851,7 +854,7 @@ void WorkflowHelpers::constructGraph(const WorkflowSpec& workflow,
 
           auto diOutput = getOutputToDataInspector(workflow[consumer].inputs[input]);
           for (size_t producer = 0; producer < workflow.size(); producer++) {
-            if (!isInspectorDevice(workflow[producer])) {
+            if (!DataInspector::isInspectorDevice(workflow[producer])) {
               for (const OutputSpec& output : workflow[producer].outputs) {
                 if (output == diOutput) {
                   for (size_t tpi = 0; tpi < workflow[consumer].maxInputTimeslices; ++tpi) {
@@ -867,7 +870,6 @@ void WorkflowHelpers::constructGraph(const WorkflowSpec& workflow,
           }
         }
       }
-
       continue;
     }
 
