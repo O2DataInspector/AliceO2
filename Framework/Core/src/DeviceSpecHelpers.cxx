@@ -34,6 +34,7 @@
 #include "Framework/Logger.h"
 #include "Framework/RuntimeError.h"
 #include "Framework/RawDeviceService.h"
+#include "Framework/DataInspector.h"
 #include "ProcessingPoliciesHelpers.h"
 
 #include "WorkflowHelpers.h"
@@ -991,6 +992,9 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
 
   processInEdgeActions(devices, deviceIndex, connections, resourceManager, inEdgeIndex, logicalEdges,
                        inActions, workflow, availableForwardsInfo, channelPolicies, channelPrefix, defaultOffer, overrideServices);
+
+  bool hasDataInspector = std::any_of(devices.begin(), devices.end(), [](const DeviceSpec& device) -> bool{ return device.name == "DataInspector"; });
+
   // We apply the completion policies here since this is where we have all the
   // devices resolved.
   for (auto& device : devices) {
@@ -1019,16 +1023,6 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
       }
     }
 
-    if (device.name == "DataInspector") {
-      device.completionPolicy = CompletionPolicy{
-        "data-inspector-completion",
-        [](DeviceSpec const& device) { return device.name == "DataInspector"; },
-        [](InputSpan const& span) { return CompletionPolicy::CompletionOp::Consume; }};
-      device.dispatchPolicy = {
-        "data-inspector-dispatch",
-        [](DeviceSpec const&) { return true; },
-        DispatchPolicy::DispatchOp::AfterComputation};
-    }
     bool hasPolicy = false;
     for (auto& policy : resourcePolicies) {
       if (policy.matcher(device) == true) {
@@ -1039,6 +1033,10 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
     }
     if (hasPolicy == false) {
       throw runtime_error_f("Unable to find a resource policy for %s", device.id.c_str());
+    }
+
+    if(hasDataInspector && DataInspector::isNonInternalDevice(device)) {
+      DataInspector::modifyPolicies(device);
     }
   }
 

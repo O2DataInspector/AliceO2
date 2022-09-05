@@ -908,6 +908,7 @@ o2::framework::ServiceSpec CommonServices::objectCache()
     .kind = ServiceKind::Serial};
 }
 
+// We want to register this service only when '--inspector' option was specified
 o2::framework::ServiceSpec CommonServices::dataInspectorServiceSpec()
 {
   return ServiceSpec{
