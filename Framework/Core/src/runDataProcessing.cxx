@@ -54,7 +54,6 @@
 #include "Framework/WorkflowSpecNode.h"
 #include "Framework/GuiCallbackContext.h"
 #include "Framework/DeviceContext.h"
-#include "Framework/DataInspectorService.h"
 #include "ControlServiceHelpers.h"
 #include "ProcessingPoliciesHelpers.h"
 #include "DriverServerContext.h"
@@ -1672,35 +1671,6 @@ int runStateMachine(DataProcessorSpecs const& workflow,
                                                             varmap["channel-prefix"].as<std::string>(),
                                                             overrides);
 
-          if(varmap.count("inspector")) {
-            LOG(info) << "INSPECTOR POLICY";
-            for(auto& device : runningWorkflow.devices) {
-              if (device.name.find("internal") != std::string::npos || device.name == "DataInspector")
-                continue;
-
-              auto& oldPolicy = device.sendingPolicy;
-              device.sendingPolicy = SendingPolicy{
-                "data-inspector-policy",
-                nullptr,
-                [oldPolicy, &serviceRegistry](FairMQDeviceProxy& proxy, FairMQParts& parts, ChannelIndex channelIndex) -> void{
-                  auto& diService = serviceRegistry.get<DataInspectorService>();
-                  if(diService.isInspected())
-                    sendCopyToDataInspector(&proxy, parts, diService.getDataInspectorChannelIndex());
-
-                  oldPolicy.send(proxy, parts, channelIndex);
-                }
-              };
-
-              auto& oldProcAlg = device.algorithm.onProcess;
-              device.algorithm.onProcess = [oldProcAlg](ProcessingContext& context) -> void {
-                context.services().get<DataInspectorService>().receive();
-                oldProcAlg(context);
-              };
-            }
-          } else {
-            LOG(info) << "NO INSPECTOR";
-          }
-
           metricProcessingCallbacks.clear();
           for (auto& device : runningWorkflow.devices) {
             for (auto& service : device.services) {
@@ -2584,8 +2554,8 @@ int doMain(int argc, char** argv, o2::framework::WorkflowSpec const& workflow,
 
   auto physicalWorkflow = workflow;
 
-  if (std::any_of(argv, argv + argc, isInspectorArgument)) {
-    addDataInspector(physicalWorkflow);
+  if (std::any_of(argv, argv + argc, DataInspector::isInspectorArgument)) {
+    DataInspector::addDataInspector(physicalWorkflow);
   }
 
   std::map<std::string, size_t> rankIndex;

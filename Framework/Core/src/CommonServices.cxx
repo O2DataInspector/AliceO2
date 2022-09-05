@@ -797,6 +797,7 @@ o2::framework::ServiceSpec CommonServices::dataAllocatorSpec()
     .kind = ServiceKind::Stream};
 }
 
+// We want to register this service only when '--inspector' option was specified
 o2::framework::ServiceSpec CommonServices::dataInspectorServiceSpec()
 {
   return ServiceSpec{
