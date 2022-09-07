@@ -914,13 +914,14 @@ o2::framework::ServiceSpec CommonServices::dataInspectorServiceSpec()
   return ServiceSpec{
     .name = "data-inspector-service",
     .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
+      bool hasDataInspector = options.GetVarMap()["inspector"].as<bool>();
       const auto& deviceName = registry.get<DeviceSpec const>().name;
       const auto& outputs = registry.get<DeviceSpec const>().outputs;
 
       DataInspectorService* diService = nullptr;
       if(deviceName == "DataInspector") {
         diService = new DataInspectorService(deviceName);
-      } else {
+      } else if(hasDataInspector) {
         int i=0;
         for(;i<outputs.size(); i++){
           if(outputs[i].channel.find("to_DataInspector") != std::string::npos)
