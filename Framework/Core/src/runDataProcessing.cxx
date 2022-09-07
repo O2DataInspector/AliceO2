@@ -1088,7 +1088,9 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
       ("exit-transition-timeout", bpo::value<std::string>()->default_value(defaultExitTransitionTimeout), "how many second to wait before switching from RUN to READY")                    //
       ("timeframes-rate-limit", bpo::value<std::string>()->default_value("0"), "how many timeframe can be in fly at the same moment (0 disables)")                                         //
       ("configuration,cfg", bpo::value<std::string>()->default_value("command-line"), "configuration backend")                                                                             //
-      ("infologger-mode", bpo::value<std::string>()->default_value(defaultInfologgerMode), "O2_INFOLOGGER_MODE override");
+      ("infologger-mode", bpo::value<std::string>()->default_value(defaultInfologgerMode), "O2_INFOLOGGER_MODE override")
+      ("inspector", bpo::value<bool>()->zero_tokens()->default_value(false), "add DataInspectorService");
+
     r.fConfig.AddToCmdLineOptions(optsDesc, true);
   });
 
@@ -1679,7 +1681,8 @@ int runStateMachine(DataProcessorSpecs const& workflow,
                                                             !varmap["no-IPC"].as<bool>(),
                                                             driverInfo.resourcesMonitoringInterval,
                                                             varmap["channel-prefix"].as<std::string>(),
-                                                            overrides);
+                                                            overrides,
+                                                            varmap["inspector"].as<bool>());
 
           metricProcessingCallbacks.clear();
           for (auto& device : runningWorkflow.devices) {
