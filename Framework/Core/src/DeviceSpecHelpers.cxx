@@ -931,7 +931,8 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
                                                        bool optimizeTopology,
                                                        unsigned short resourcesMonitoringInterval,
                                                        std::string const& channelPrefix,
-                                                       OverrideServiceSpecs const& overrideServices)
+                                                       OverrideServiceSpecs const& overrideServices,
+                                                       bool hasDataInspector)
 {
   std::vector<LogicalForwardInfo> availableForwardsInfo;
   std::vector<DeviceConnectionEdge> logicalEdges;
@@ -989,8 +990,6 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
 
   processInEdgeActions(devices, deviceIndex, connections, resourceManager, inEdgeIndex, logicalEdges,
                        inActions, workflow, availableForwardsInfo, channelPolicies, channelPrefix, defaultOffer, overrideServices);
-
-  bool hasDataInspector = std::any_of(devices.begin(), devices.end(), [](const DeviceSpec& device) -> bool{ return device.name == "DataInspector"; });
 
   // We apply the completion policies here since this is where we have all the
   // devices resolved.
@@ -1393,7 +1392,7 @@ void DeviceSpecHelpers::prepareArguments(bool defaultQuiet, bool defaultStopped,
             // currently only the simple case is supported
             assert(semantic->min_tokens() <= 1);
             // assert(semantic->max_tokens() && semantic->min_tokens());
-            if (semantic->min_tokens() > 0 || varit.first == "inspector") {
+            if (semantic->min_tokens() > 0) {
               std::string stringRep;
               if (auto v = boost::any_cast<std::string>(&varit.second.value())) {
                 stringRep = *v;
@@ -1541,7 +1540,7 @@ boost::program_options::options_description DeviceSpecHelpers::getForwardedDevic
     ("infologger-severity", bpo::value<std::string>(), "minimun FairLogger severity which goes to info logger")                                                      //
     ("dpl-tracing-flags", bpo::value<std::string>(), "pipe separated list of events to trace")                                                                       //
     ("child-driver", bpo::value<std::string>(), "external driver to start childs with (e.g. valgrind)")
-    ("inspector", bpo::value<std::string>()->implicit_value(""), "add the data inspector custom device and specify devices to inspect");//
+    ("inspector", bpo::value<bool>()->zero_tokens()->default_value(false), "run workflow with DataInspector");//
 
   return forwardedDeviceOptions;
 }
