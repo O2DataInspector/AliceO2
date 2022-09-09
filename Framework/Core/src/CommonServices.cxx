@@ -11,6 +11,7 @@
 #include "Framework/CommonServices.h"
 #include "Framework/AsyncQueue.h"
 #include "Framework/DataInspectorService.h"
+#include "Framework/DataInspector.h"
 #include "Framework/ParallelContext.h"
 #include "Framework/ControlService.h"
 #include "Framework/DriverClient.h"
@@ -916,12 +917,14 @@ o2::framework::ServiceSpec CommonServices::dataInspectorServiceSpec()
     .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
       bool hasDataInspector = options.GetVarMap()["inspector"].as<bool>();
       const auto& deviceName = registry.get<DeviceSpec const>().name;
+      bool isDataInspectorDevice = DataInspector::isInspectorDevice(registry.get<DeviceSpec const>());
+      bool isNonInternalDevice = DataInspector::isNonInternalDevice(registry.get<DeviceSpec const>());
       const auto& outputs = registry.get<DeviceSpec const>().outputs;
 
       DataInspectorService* diService = nullptr;
-      if(deviceName == "DataInspector") {
+      if(isDataInspectorDevice) {
         diService = new DataInspectorService(deviceName);
-      } else if(hasDataInspector) {
+      } else if(hasDataInspector && isNonInternalDevice) {
         int i=0;
         for(;i<outputs.size(); i++){
           if(outputs[i].channel.find("to_DataInspector") != std::string::npos)
