@@ -153,19 +153,13 @@ namespace o2::framework::DataInspector
     return device.name.find("internal") == std::string::npos;
   }
 
-  inline bool isNonEmptyOutput(const OutputSpec &output)
-  {
-    return !output.binding.value.empty();
-  }
-
   /* Transforms an `OutputSpec` into an `InputSpec`. For each output route,
   creates a new input route with the same values. */
   inline InputSpec asInputSpec(const OutputSpec &output) {
     return std::visit(
       [&output](auto &&matcher) {
         using T = std::decay_t<decltype(matcher)>;
-        if constexpr(std::is_same_v < T, ConcreteDataMatcher > )
-        {
+        if constexpr(std::is_same_v < T, ConcreteDataMatcher > ) {
           return InputSpec{output.binding.value, matcher, output.lifetime};
         } else {
           ConcreteDataMatcher matcher_{matcher.origin, matcher.description, 0};
@@ -188,9 +182,7 @@ namespace o2::framework::DataInspector
     for (DataProcessorSpec &device: workflow) {
       if (isNonInternalDevice(device)) {
         for (const OutputSpec &output: device.outputs) {
-          if (isNonEmptyOutput(output)) {
-            dataInspector.inputs.emplace_back(asInputSpec(output));
-          }
+          dataInspector.inputs.emplace_back(asInputSpec(output));
         }
 
         injectOnProcessInterceptor(device);
