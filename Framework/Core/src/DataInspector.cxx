@@ -191,4 +191,33 @@ namespace o2::framework::DataInspector
 
     workflow.emplace_back(std::move(dataInspector));
   }
+
+  ServiceSpec serviceSpec()
+  {
+    return ServiceSpec{
+      .name = "data-inspector-service",
+      .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
+        const auto& device = registry.get<DeviceSpec const>();
+        const auto& deviceName = device.name;
+        bool isDataInspectorDevice = DataInspector::isInspectorDevice(device);
+        const auto& outputs = device.outputs;
+
+        DataInspectorService* diService = nullptr;
+        if(isDataInspectorDevice) {
+          diService = new DataInspectorService(deviceName);
+        } else {
+          int channelIndex = 0;
+          for(;channelIndex<outputs.size(); channelIndex++){
+            if(outputs[channelIndex].channel.find("to_DataInspector") != std::string::npos)
+              break;
+          }
+
+          diService = new DataInspectorService(deviceName, ChannelIndex{channelIndex});
+        }
+
+        return ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), diService};
+      },
+      .kind = ServiceKind::Global
+    };
+  }
 }
