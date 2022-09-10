@@ -1133,6 +1133,11 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
     if (ResourcesMonitoringHelper::isResourcesMonitoringEnabled(spec.resourceMonitoringInterval)) {
       serviceRegistry.get<Monitoring>().enableProcessMonitoring(spec.resourceMonitoringInterval);
     }
+
+    // We want to register this service only when '--inspector' option was specified
+    if(r.fConfig.GetVarMap()["inspector"].as<bool>() && DataInspector::isNonInternalDevice(spec)) {
+      serviceRegistry.declareService(DataInspector::serviceSpec(), *deviceState.get(), r.fConfig);
+    }
   };
 
   runner.AddHook<fair::mq::hooks::InstantiateDevice>(afterConfigParsingCallback);

@@ -86,6 +86,9 @@ inline void modifyPolicies(DeviceSpec& spec)
     injectSendingPolicyInterceptor(spec);
   }
 }
+
+/* Create ServiceSpec of DataInspectorService */
+ServiceSpec serviceSpec();
 }
 
 #endif //O2_DATAINSPECTOR_H

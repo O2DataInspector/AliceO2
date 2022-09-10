@@ -909,38 +909,6 @@ o2::framework::ServiceSpec CommonServices::objectCache()
     .kind = ServiceKind::Serial};
 }
 
-// We want to register this service only when '--inspector' option was specified
-o2::framework::ServiceSpec CommonServices::dataInspectorServiceSpec()
-{
-  return ServiceSpec{
-    .name = "data-inspector-service",
-    .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
-      bool hasDataInspector = options.GetVarMap()["inspector"].as<bool>();
-      const auto& deviceName = registry.get<DeviceSpec const>().name;
-      bool isDataInspectorDevice = DataInspector::isInspectorDevice(registry.get<DeviceSpec const>());
-      bool isNonInternalDevice = DataInspector::isNonInternalDevice(registry.get<DeviceSpec const>());
-      const auto& outputs = registry.get<DeviceSpec const>().outputs;
-
-      DataInspectorService* diService = nullptr;
-      if(isDataInspectorDevice) {
-        diService = new DataInspectorService(deviceName);
-      } else if(hasDataInspector && isNonInternalDevice) {
-        int i=0;
-        for(;i<outputs.size(); i++){
-          if(outputs[i].channel.find("to_DataInspector") != std::string::npos)
-            break;
-        }
-
-        diService = new DataInspectorService(deviceName, ChannelIndex{i});
-      }
-
-      return ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), diService};
-    },
-    .configure = noConfiguration(),
-    .kind = ServiceKind::Global
-  };
-}
-
 std::vector<ServiceSpec> CommonServices::defaultServices(int numThreads)
 {
   std::vector<ServiceSpec> specs{
@@ -967,8 +935,7 @@ std::vector<ServiceSpec> CommonServices::defaultServices(int numThreads)
     ArrowSupport::arrowBackendSpec(),
     CommonMessageBackends::stringBackendSpec(),
     decongestionSpec(),
-    CommonMessageBackends::rawBufferBackendSpec(),
-    dataInspectorServiceSpec()};
+    CommonMessageBackends::rawBufferBackendSpec()};
 
   // I should make it optional depending wether the GUI is there or not...
   specs.push_back(CommonServices::guiMetricsSpec());
