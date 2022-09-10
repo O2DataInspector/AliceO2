@@ -35,24 +35,6 @@ using namespace rapidjson;
 
 namespace o2::framework::DataInspector
 {
-  FairMQParts copyMessage(FairMQParts &parts)
-  {
-    FairMQParts partsCopy;
-    for (auto &part: parts) {
-      FairMQTransportFactory *transport = part->GetTransport();
-      FairMQMessagePtr message(transport->CreateMessage());
-      message->Copy(*part);
-      partsCopy.AddPart(std::move(message));
-    }
-    return partsCopy;
-  }
-
-  void sendCopy(FairMQDeviceProxy* proxy, FairMQParts& parts, ChannelIndex channelIndex)
-  {
-    auto copy = copyMessage(parts);
-    proxy->getOutputChannel(channelIndex)->Send(copy);
-  }
-
   /* Returns the name of an O2 device which is the source of a route in `routes`
   which matches with `matcher`. If no such route exists, return an empty
   string. */
@@ -133,7 +115,7 @@ namespace o2::framework::DataInspector
   sends it on the `socket`. The messages are sent separately. */
   static void sendToProxy(ProcessingContext& context)
   {
-    auto& socket = context.services().get<DataInspectorService>();
+    auto& diProxyService = context.services().get<DataInspectorProxyService>();
 
     DeviceSpec device = context.services().get<RawDeviceService>().spec();
     for (const DataRef& ref : context.inputs()) {
@@ -144,7 +126,7 @@ namespace o2::framework::DataInspector
       buildDocument(message, sender, ref);
       message.Accept(writer);
 
-      socket.send(DIMessage{DIMessage::Header::Type::DATA, std::string{buffer.GetString(), buffer.GetSize()}});
+      diProxyService.send(DIMessage{DIMessage::Header::Type::DATA, std::string{buffer.GetString(), buffer.GetSize()}});
     }
   }
 
@@ -190,34 +172,5 @@ namespace o2::framework::DataInspector
     }
 
     workflow.emplace_back(std::move(dataInspector));
-  }
-
-  ServiceSpec serviceSpec()
-  {
-    return ServiceSpec{
-      .name = "data-inspector-service",
-      .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
-        const auto& device = registry.get<DeviceSpec const>();
-        const auto& deviceName = device.name;
-        bool isDataInspectorDevice = DataInspector::isInspectorDevice(device);
-        const auto& outputs = device.outputs;
-
-        DataInspectorService* diService = nullptr;
-        if(isDataInspectorDevice) {
-          diService = new DataInspectorService(deviceName);
-        } else {
-          int channelIndex = 0;
-          for(;channelIndex<outputs.size(); channelIndex++){
-            if(outputs[channelIndex].channel.find("to_DataInspector") != std::string::npos)
-              break;
-          }
-
-          diService = new DataInspectorService(deviceName, ChannelIndex{channelIndex});
-        }
-
-        return ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), diService};
-      },
-      .kind = ServiceKind::Global
-    };
   }
 }

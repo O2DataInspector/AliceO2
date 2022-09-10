@@ -34,10 +34,6 @@ inline bool isNonInternalDevice(const DeviceSpec& spec)
   return spec.name.find("internal") == std::string::npos;
 }
 
-/* Copies `parts` and sends it to the `device`. The copy is necessary because of
- * memory management. */
-void sendCopy(FairMQDeviceProxy* proxy, FairMQParts& parts, ChannelIndex channelIndex);
-
 /* Creates an O2 Device for the DataInspector and adds it to `workflow`. */
 void addDataInspector(WorkflowSpec& workflow);
 
@@ -49,9 +45,11 @@ inline void injectSendingPolicyInterceptor(DeviceSpec& device)
     "data-inspector-policy",
     nullptr,
     [oldPolicy](FairMQDeviceProxy& proxy, FairMQParts& parts, ChannelIndex channelIndex, ServiceRegistry& registry) -> void{
+      auto& diProxyService = registry.get<DataInspectorProxyService>();
       auto& diService = registry.get<DataInspectorService>();
-      if(diService.isInspected())
-        sendCopy(&proxy, parts, diService.getDataInspectorChannelIndex());
+
+      if(diProxyService.isInspected())
+        diService.sendCopyToDataInspectorDevice(proxy, parts);
 
       oldPolicy.send(proxy, parts, channelIndex, registry);
     }
@@ -63,7 +61,7 @@ inline void injectOnProcessInterceptor(DataProcessorSpec& spec)
 {
   auto& oldProcAlg = spec.algorithm.onProcess;
   spec.algorithm.onProcess = [oldProcAlg](ProcessingContext& context) -> void {
-    context.services().get<DataInspectorService>().receive();
+    context.services().get<DataInspectorProxyService>().receive();
     oldProcAlg(context);
   };
 }
@@ -86,9 +84,6 @@ inline void modifyPolicies(DeviceSpec& spec)
     injectSendingPolicyInterceptor(spec);
   }
 }
-
-/* Create ServiceSpec of DataInspectorService */
-ServiceSpec serviceSpec();
 }
 
 #endif //O2_DATAINSPECTOR_H

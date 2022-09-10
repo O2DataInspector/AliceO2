@@ -1136,7 +1136,11 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
 
     // We want to register this service only when '--inspector' option was specified
     if(r.fConfig.GetVarMap()["inspector"].as<bool>() && DataInspector::isNonInternalDevice(spec)) {
-      serviceRegistry.declareService(DataInspector::serviceSpec(), *deviceState.get(), r.fConfig);
+      if (!DataInspector::isInspectorDevice(spec)) {
+        serviceRegistry.declareService(DataInspectorService::spec(), *deviceState.get(), r.fConfig);
+      }
+
+      serviceRegistry.declareService(DataInspectorProxyService::spec(), *deviceState.get(), r.fConfig);
     }
   };
 

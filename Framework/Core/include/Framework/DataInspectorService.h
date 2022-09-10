@@ -4,19 +4,23 @@
 #include <fairlogger/Logger.h>
 #include "DISocket.hpp"
 #include "Framework/RoutingIndices.h"
+#include "Framework/FairMQDeviceProxy.h"
+#include "Framework/ServiceSpec.h"
+#include <fairmq/FairMQDevice.h>
+#include <fairmq/FairMQParts.h>
 
 namespace o2::framework
 {
-class DataInspectorService {
+class DataInspectorProxyService {
  public:
-  DataInspectorService(const std::string& deviceName) : DataInspectorService(deviceName, ChannelIndex{-1}) {}
-  DataInspectorService(const std::string& deviceName, ChannelIndex dataInspectorChannelIndex);
-  ~DataInspectorService();
+  DataInspectorProxyService(const std::string& deviceName);
+  ~DataInspectorProxyService();
+
+  static ServiceSpec spec();
 
   void receive();
-  void send(const DIMessage& message);
+  void send(DIMessage&& message);
   bool isInspected() { return _isInspected; }
-  ChannelIndex getDataInspectorChannelIndex() { return dataInspectorChannelIndex; }
 
  private:
   void handleMessage(DIMessage& msg);
@@ -24,6 +28,18 @@ class DataInspectorService {
   const std::string deviceName;
   bool _isInspected = false;
   DISocket socket;
+};
+
+class DataInspectorService {
+ public:
+  DataInspectorService(ChannelIndex dataInspectorChannelIndex) : dataInspectorChannelIndex(dataInspectorChannelIndex) {}
+
+  static ServiceSpec spec();
+
+  void sendCopyToDataInspectorDevice(FairMQDeviceProxy& proxy, FairMQParts& parts);
+
+ private:
+  FairMQParts copyMessage(FairMQParts &parts);
 
   ChannelIndex dataInspectorChannelIndex;
 };
