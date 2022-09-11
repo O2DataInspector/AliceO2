@@ -5,7 +5,7 @@
 
 namespace o2::framework
 {
-DataInspectorProxyService::DataInspectorProxyService(const std::string& deviceName) : deviceName(deviceName), socket(DISocket::connect("127.0.0.1", 8081))
+DataInspectorProxyService::DataInspectorProxyService(const std::string& deviceName, const std::string& address, int port) : deviceName(deviceName), socket(DISocket::connect(address, port))
 {
   socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, deviceName});
 }
@@ -16,16 +16,9 @@ DataInspectorProxyService::~DataInspectorProxyService()
   socket.close();
 }
 
-ServiceSpec DataInspectorProxyService::spec()
+std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(DeviceSpec const& spec, const std::string& address, int port)
 {
-  return ServiceSpec{
-    .name = "data-inspector-proxy-service",
-    .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
-      const auto& deviceName = registry.get<DeviceSpec const>().name;
-      return ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorProxyService>(), new DataInspectorProxyService(deviceName)};
-    },
-    .kind = ServiceKind::Global
-  };
+  return std::make_unique<DataInspectorProxyService>(spec.name, address, port);
 }
 
 void DataInspectorProxyService::receive()
@@ -72,23 +65,17 @@ FairMQParts DataInspectorService::copyMessage(FairMQParts &parts)
   return partsCopy;
 }
 
-ServiceSpec DataInspectorService::spec()
+std::unique_ptr<DataInspectorService> DataInspectorService::create(DeviceSpec const& spec)
 {
-  return ServiceSpec{
-    .name = "data-inspector-service",
-    .init = [](ServiceRegistry& registry, DeviceState& state, fair::mq::ProgOptions& options) -> ServiceHandle {
-      const auto& outputs = registry.get<DeviceSpec const>().outputs;
+  const auto& outputs = spec.outputs;
 
-      int channelIndex = 0;
-      for(;channelIndex<outputs.size(); channelIndex++){
-        if(outputs[channelIndex].channel.find("to_DataInspector") != std::string::npos)
-          break;
-      }
+  int channelIndex = 0;
+  for(;channelIndex<outputs.size(); channelIndex++){
+    if(outputs[channelIndex].channel.find("to_DataInspector") != std::string::npos)
+      break;
+  }
 
-      return ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), new DataInspectorService(ChannelIndex{channelIndex})};
-    },
-    .kind = ServiceKind::Global
-  };
+  return std::make_unique<DataInspectorService>(ChannelIndex{channelIndex});
 }
 
 void DataInspectorService::sendCopyToDataInspectorDevice(FairMQDeviceProxy& proxy, FairMQParts& parts)
