@@ -1080,7 +1080,9 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
       ("timeframes-rate-limit", bpo::value<std::string>()->default_value("0"), "how many timeframe can be in fly at the same moment (0 disables)")                                         //
       ("configuration,cfg", bpo::value<std::string>()->default_value("command-line"), "configuration backend")                                                                             //
       ("infologger-mode", bpo::value<std::string>()->default_value(defaultInfologgerMode), "O2_INFOLOGGER_MODE override")
-      ("inspector", bpo::value<bool>()->zero_tokens()->default_value(false), "add DataInspectorService");
+      ("inspector", bpo::value<bool>()->zero_tokens()->default_value(false), "add DataInspectorService")
+      ("inspector-address", bpo::value<std::string>()->default_value("127.0.0.1"), "address of DataInspector proxy")
+      ("inspector-port", bpo::value<std::string>()->default_value("8081"), "port of DataInspector proxy");
 
     r.fConfig.AddToCmdLineOptions(optsDesc, true);
   });
@@ -1091,6 +1093,8 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
   std::unique_ptr<DeviceState> deviceState;
   std::unique_ptr<ComputingQuotaEvaluator> quotaEvaluator;
   std::unique_ptr<FairMQDeviceProxy> deviceProxy;
+  std::unique_ptr<DataInspectorProxyService> diProxyService;
+  std::unique_ptr<DataInspectorService> diService;
 
   auto afterConfigParsingCallback = [&simpleRawDeviceService,
                                      &runningWorkflow,
@@ -1100,6 +1104,8 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
                                      &serviceRegistry,
                                      &deviceState,
                                      &deviceProxy,
+                                     &diProxyService,
+                                     &diService,
                                      &processingPolicies,
                                      &loop](fair::mq::DeviceRunner& r) {
     simpleRawDeviceService = std::make_unique<SimpleRawDeviceService>(nullptr, spec);
@@ -1137,10 +1143,12 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
     // We want to register this service only when '--inspector' option was specified
     if(r.fConfig.GetVarMap()["inspector"].as<bool>() && DataInspector::isNonInternalDevice(spec)) {
       if (!DataInspector::isInspectorDevice(spec)) {
-        serviceRegistry.declareService(DataInspectorService::spec(), *deviceState.get(), r.fConfig);
+        diService = DataInspectorService::create(spec);
+        serviceRegistry.registerService(ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), diService.get()});
       }
 
-      serviceRegistry.declareService(DataInspectorProxyService::spec(), *deviceState.get(), r.fConfig);
+      diProxyService = DataInspectorProxyService::create(spec, r.fConfig.GetVarMap()["inspector-address"].as<std::string>(), std::stoi(r.fConfig.GetVarMap()["inspector-port"].as<std::string>()));
+      serviceRegistry.registerService(ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorProxyService>(), diProxyService.get()});
     }
   };
 
