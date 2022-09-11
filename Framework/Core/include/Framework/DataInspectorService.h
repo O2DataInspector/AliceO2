@@ -13,10 +13,10 @@ namespace o2::framework
 {
 class DataInspectorProxyService {
  public:
-  DataInspectorProxyService(const std::string& deviceName);
+  DataInspectorProxyService(const std::string& deviceName, const std::string& address, int port);
   ~DataInspectorProxyService();
 
-  static ServiceSpec spec();
+  static std::unique_ptr<DataInspectorProxyService> create(DeviceSpec const& spec, const std::string& address, int port);
 
   void receive();
   void send(DIMessage&& message);
@@ -34,7 +34,7 @@ class DataInspectorService {
  public:
   DataInspectorService(ChannelIndex dataInspectorChannelIndex) : dataInspectorChannelIndex(dataInspectorChannelIndex) {}
 
-  static ServiceSpec spec();
+  static std::unique_ptr<DataInspectorService> create(DeviceSpec const& spec);
 
   void sendCopyToDataInspectorDevice(FairMQDeviceProxy& proxy, FairMQParts& parts);
 
