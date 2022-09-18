@@ -35,55 +35,9 @@ inline bool isNonInternalDevice(const DeviceSpec& spec)
 }
 
 /* Creates an O2 Device for the DataInspector and adds it to `workflow`. */
-void addDataInspector(WorkflowSpec& workflow);
+void injectInterceptors(WorkflowSpec& workflow);
 
-/* Inject interceptor to send copy of each message to DataInspector. */
-inline void injectSendingPolicyInterceptor(DeviceSpec& device)
-{
-  auto& oldPolicy = device.sendingPolicy;
-  device.sendingPolicy = SendingPolicy{
-    "data-inspector-policy",
-    nullptr,
-    [oldPolicy](FairMQDeviceProxy& proxy, FairMQParts& parts, ChannelIndex channelIndex, ServiceRegistry& registry) -> void{
-      auto& diProxyService = registry.get<DataInspectorProxyService>();
-      auto& diService = registry.get<DataInspectorService>();
-
-      if(diProxyService.isInspected())
-        diService.sendCopyToDataInspectorDevice(proxy, parts);
-
-      oldPolicy.send(proxy, parts, channelIndex, registry);
-    }
-  };
-}
-
-/* Inject interceptor to check for messages from proxy before running onProcess. */
-inline void injectOnProcessInterceptor(DataProcessorSpec& spec)
-{
-  auto& oldProcAlg = spec.algorithm.onProcess;
-  spec.algorithm.onProcess = [oldProcAlg](ProcessingContext& context) -> void {
-    context.services().get<DataInspectorProxyService>().receive();
-    oldProcAlg(context);
-  };
-}
-
-/* Change completion policy of DataInspector to run on each input. */
-inline void changeInspectorPolicies(DeviceSpec& spec)
-{
-  spec.completionPolicy = CompletionPolicy{
-    "data-inspector-completion",
-    [](DeviceSpec const& device) { return device.name == "DataInspector"; },
-    [](InputSpan const& span) { return CompletionPolicy::CompletionOp::Consume; }};
-}
-
-/* Decide which modifications to apply for given device when DataInspector is present. */
-inline void modifyPolicies(DeviceSpec& spec)
-{
-  if (isInspectorDevice(spec)) {
-    changeInspectorPolicies(spec);
-  } else {
-    injectSendingPolicyInterceptor(spec);
-  }
-}
+void sendToProxy(DataInspectorProxyService& diProxyService, const std::vector<DataRef>& refs, const std::string& deviceName);
 }
 
 #endif //O2_DATAINSPECTOR_H

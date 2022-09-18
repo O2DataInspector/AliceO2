@@ -35,23 +35,6 @@ using namespace rapidjson;
 
 namespace o2::framework::DataInspector
 {
-  /* Returns the name of an O2 device which is the source of a route in `routes`
-  which matches with `matcher`. If no such route exists, return an empty
-  string. */
-  std::string findSenderByRoute(
-    const std::vector <InputRoute> &routes,
-    const InputSpec &matcher)
-  {
-    for (const InputRoute &route: routes) {
-      if (route.matcher == matcher) {
-        std::string::size_type start = route.sourceChannel.find('_') + 1;
-        std::string::size_type end = route.sourceChannel.find('_', start);
-        return route.sourceChannel.substr(start, end - start);
-      }
-    }
-    return "";
-  }
-
   void addPayload(Document& message,
                   const header::DataHeader* header,
                   const DataRef& ref,
@@ -113,13 +96,11 @@ namespace o2::framework::DataInspector
 
   /* Callback which transforms each `DataRef` in `context` to a JSON object and
   sends it on the `socket`. The messages are sent separately. */
-  static void sendToProxy(ProcessingContext& context)
+  void sendToProxy(DataInspectorProxyService& diProxyService, const std::vector<DataRef>& refs, const std::string& deviceName)
   {
-    auto& diProxyService = context.services().get<DataInspectorProxyService>();
+    std::string sender = deviceName;
 
-    DeviceSpec device = context.services().get<RawDeviceService>().spec();
-    for (const DataRef& ref : context.inputs()) {
-      std::string sender = findSenderByRoute(device.inputs, *ref.spec);
+    for(auto& ref : refs) {
       Document message;
       StringBuffer buffer;
       Writer<StringBuffer> writer(buffer);
@@ -135,42 +116,22 @@ namespace o2::framework::DataInspector
     return device.name.find("internal") == std::string::npos;
   }
 
-  /* Transforms an `OutputSpec` into an `InputSpec`. For each output route,
-  creates a new input route with the same values. */
-  inline InputSpec asInputSpec(const OutputSpec &output) {
-    return std::visit(
-      [&output](auto &&matcher) {
-        using T = std::decay_t<decltype(matcher)>;
-        if constexpr(std::is_same_v < T, ConcreteDataMatcher > ) {
-          return InputSpec{output.binding.value, matcher, output.lifetime};
-        } else {
-          ConcreteDataMatcher matcher_{matcher.origin, matcher.description, 0};
-          return InputSpec{output.binding.value, matcher_, output.lifetime};
-        }
-      },
-      output.matcher);
+  /* Inject interceptor to check for messages from proxy before running onProcess. */
+  void injectOnProcessInterceptor(DataProcessorSpec& spec)
+  {
+    auto& oldProcAlg = spec.algorithm.onProcess;
+    spec.algorithm.onProcess = [oldProcAlg](ProcessingContext& context) -> void {
+      context.services().get<DataInspectorProxyService>().receive();
+      oldProcAlg(context);
+    };
   }
 
-  void addDataInspector(WorkflowSpec &workflow) {
-    DataProcessorSpec dataInspector{"DataInspector"};
-
-    dataInspector.algorithm = AlgorithmSpec{[&workflow](InitContext &context) -> AlgorithmSpec::ProcessCallback{
-      return [](ProcessingContext &context) mutable {
-        sendToProxy(context);
-      };
-    }};
-
-    // Connect every output to DataInspector and inject interceptor to check for messages from proxy
+  void injectInterceptors(WorkflowSpec &workflow) {
     for (DataProcessorSpec &device: workflow) {
       if (isNonInternalDevice(device)) {
-        for (const OutputSpec &output: device.outputs) {
-          dataInspector.inputs.emplace_back(asInputSpec(output));
-        }
 
         injectOnProcessInterceptor(device);
       }
     }
-
-    workflow.emplace_back(std::move(dataInspector));
   }
 }

@@ -52,35 +52,4 @@ void DataInspectorProxyService::handleMessage(DIMessage &msg)
     }
   }
 }
-
-FairMQParts DataInspectorService::copyMessage(FairMQParts &parts)
-{
-  FairMQParts partsCopy;
-  for (auto &part: parts) {
-    FairMQTransportFactory *transport = part->GetTransport();
-    FairMQMessagePtr message(transport->CreateMessage());
-    message->Copy(*part);
-    partsCopy.AddPart(std::move(message));
-  }
-  return partsCopy;
-}
-
-std::unique_ptr<DataInspectorService> DataInspectorService::create(DeviceSpec const& spec)
-{
-  const auto& outputs = spec.outputs;
-
-  int channelIndex = 0;
-  for(;channelIndex<outputs.size(); channelIndex++){
-    if(outputs[channelIndex].channel.find("to_DataInspector") != std::string::npos)
-      break;
-  }
-
-  return std::make_unique<DataInspectorService>(ChannelIndex{channelIndex});
-}
-
-void DataInspectorService::sendCopyToDataInspectorDevice(FairMQDeviceProxy& proxy, FairMQParts& parts)
-{
-  auto copy = copyMessage(parts);
-  proxy.getOutputChannel(dataInspectorChannelIndex)->Send(copy);
-}
 }
