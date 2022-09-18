@@ -96,6 +96,7 @@ namespace o2::framework::DataInspector
 
   /* Callback which transforms each `DataRef` in `context` to a JSON object and
   sends it on the `socket`. The messages are sent separately. */
+  //TODO: ??? move deserialization to proxy ???
   void sendToProxy(DataInspectorProxyService& diProxyService, const std::vector<DataRef>& refs, const std::string& deviceName)
   {
     std::string sender = deviceName;
