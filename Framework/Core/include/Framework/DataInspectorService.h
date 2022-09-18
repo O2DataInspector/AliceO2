@@ -29,20 +29,6 @@ class DataInspectorProxyService {
   bool _isInspected = false;
   DISocket socket;
 };
-
-class DataInspectorService {
- public:
-  DataInspectorService(ChannelIndex dataInspectorChannelIndex) : dataInspectorChannelIndex(dataInspectorChannelIndex) {}
-
-  static std::unique_ptr<DataInspectorService> create(DeviceSpec const& spec);
-
-  void sendCopyToDataInspectorDevice(FairMQDeviceProxy& proxy, FairMQParts& parts);
-
- private:
-  FairMQParts copyMessage(FairMQParts &parts);
-
-  ChannelIndex dataInspectorChannelIndex;
-};
 }
 
 #endif //O2_DATAINSPECTORSERVICE_H

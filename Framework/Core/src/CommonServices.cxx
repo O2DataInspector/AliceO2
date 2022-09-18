@@ -10,8 +10,6 @@
 // or submit itself to any jurisdiction.
 #include "Framework/CommonServices.h"
 #include "Framework/AsyncQueue.h"
-#include "Framework/DataInspectorService.h"
-#include "Framework/DataInspector.h"
 #include "Framework/ParallelContext.h"
 #include "Framework/ControlService.h"
 #include "Framework/DriverClient.h"

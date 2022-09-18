@@ -34,7 +34,6 @@
 #include "Framework/Logger.h"
 #include "Framework/RuntimeError.h"
 #include "Framework/RawDeviceService.h"
-#include "Framework/DataInspector.h"
 #include "ProcessingPoliciesHelpers.h"
 
 #include "WorkflowHelpers.h"
@@ -934,8 +933,7 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
                                                        bool optimizeTopology,
                                                        unsigned short resourcesMonitoringInterval,
                                                        std::string const& channelPrefix,
-                                                       OverrideServiceSpecs const& overrideServices,
-                                                       bool hasDataInspector)
+                                                       OverrideServiceSpecs const& overrideServices)
 {
   std::vector<LogicalForwardInfo> availableForwardsInfo;
   std::vector<DeviceConnectionEdge> logicalEdges;
@@ -993,7 +991,6 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
 
   processInEdgeActions(devices, deviceIndex, connections, resourceManager, inEdgeIndex, logicalEdges,
                        inActions, workflow, availableForwardsInfo, channelPolicies, channelPrefix, defaultOffer, overrideServices);
-
   // We apply the completion policies here since this is where we have all the
   // devices resolved.
   for (auto& device : devices) {
@@ -1021,7 +1018,6 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
         break;
       }
     }
-
     bool hasPolicy = false;
     for (auto& policy : resourcePolicies) {
       if (policy.matcher(device) == true) {
@@ -1032,10 +1028,6 @@ void DeviceSpecHelpers::dataProcessorSpecs2DeviceSpecs(const WorkflowSpec& workf
     }
     if (hasPolicy == false) {
       throw runtime_error_f("Unable to find a resource policy for %s", device.id.c_str());
-    }
-
-    if(hasDataInspector && DataInspector::isNonInternalDevice(device)) {
-      DataInspector::modifyPolicies(device);
     }
   }
 

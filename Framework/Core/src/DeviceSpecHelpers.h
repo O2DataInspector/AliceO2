@@ -60,8 +60,7 @@ struct DeviceSpecHelpers {
     bool optimizeTopology = false,
     unsigned short resourcesMonitoringInterval = 0,
     std::string const& channelPrefix = "",
-    OverrideServiceSpecs const& overrideServices = {},
-    bool hasDataInspector = false);
+    OverrideServiceSpecs const& overrideServices = {});
 
   static void dataProcessorSpecs2DeviceSpecs(
     const WorkflowSpec& workflow,
