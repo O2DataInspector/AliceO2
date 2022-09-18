@@ -1104,7 +1104,6 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
   std::unique_ptr<FairMQDeviceProxy> deviceProxy;
   std::unique_ptr<DeviceContext> deviceContext;
   std::unique_ptr<DataInspectorProxyService> diProxyService;
-  std::unique_ptr<DataInspectorService> diService;
 
   auto afterConfigParsingCallback = [&simpleRawDeviceService,
                                      &runningWorkflow,
@@ -1115,7 +1114,6 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
                                      &deviceState,
                                      &deviceProxy,
                                      &diProxyService,
-                                     &diService,
                                      &processingPolicies,
                                      &deviceContext,
                                      &loop](fair::mq::DeviceRunner& r) {
@@ -1156,11 +1154,6 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
 
     // We want to register this service only when '--inspector' option was specified
     if(r.fConfig.GetVarMap()["inspector"].as<bool>() && DataInspector::isNonInternalDevice(spec)) {
-      if (!DataInspector::isInspectorDevice(spec)) {
-        diService = DataInspectorService::create(spec);
-        serviceRegistry.registerService(ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorService>(), diService.get()});
-      }
-
       diProxyService = DataInspectorProxyService::create(spec, r.fConfig.GetVarMap()["inspector-address"].as<std::string>(), std::stoi(r.fConfig.GetVarMap()["inspector-port"].as<std::string>()));
       serviceRegistry.registerService(ServiceHandle{TypeIdHelpers::uniqueId<DataInspectorProxyService>(), diProxyService.get()});
     }
@@ -1688,9 +1681,7 @@ int runStateMachine(DataProcessorSpecs const& workflow,
                                                             !varmap["no-IPC"].as<bool>(),
                                                             driverInfo.resourcesMonitoringInterval,
                                                             varmap["channel-prefix"].as<std::string>(),
-                                                            overrides,
-                                                            varmap["inspector"].as<bool>());
-
+                                                            overrides);
           metricProcessingCallbacks.clear();
           for (auto& device : runningWorkflow.devices) {
             for (auto& service : device.services) {
@@ -2575,7 +2566,7 @@ int doMain(int argc, char** argv, o2::framework::WorkflowSpec const& workflow,
   auto physicalWorkflow = workflow;
 
   if (std::any_of(argv, argv + argc, DataInspector::isInspectorArgument)) {
-    DataInspector::addDataInspector(physicalWorkflow);
+    DataInspector::injectInterceptors(physicalWorkflow);
   }
 
   std::map<std::string, size_t> rankIndex;

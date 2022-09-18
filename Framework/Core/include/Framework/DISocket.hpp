@@ -36,7 +36,7 @@ static boost::asio::io_context ioContext;
 class DISocket {
  public:
   DISocket(std::unique_ptr<boost::asio::ip::tcp::socket> socket) : socket(std::move(socket)) {}
-  DISocket(DISocket&& diSocket)  noexcept : socket(std::move(diSocket.socket)) {}
+  DISocket(DISocket&& diSocket) noexcept : socket(std::move(diSocket.socket)) {}
 
   DISocket operator=(const DISocket& diSocket) = delete;
 
