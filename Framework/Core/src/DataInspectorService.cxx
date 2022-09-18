@@ -7,12 +7,12 @@ namespace o2::framework
 {
 DataInspectorProxyService::DataInspectorProxyService(const std::string& deviceName, const std::string& address, int port) : deviceName(deviceName), socket(DISocket::connect(address, port))
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, deviceName});
+  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, std::string(deviceName)});
 }
 
 DataInspectorProxyService::~DataInspectorProxyService()
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_OFF, deviceName});
+  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_OFF, std::string{deviceName}});
   socket.close();
 }
 
