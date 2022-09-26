@@ -16,7 +16,7 @@ class DataInspectorProxyService {
   DataInspectorProxyService(const std::string& deviceName, const std::string& address, int port, const std::string& id);
   ~DataInspectorProxyService();
 
-  static std::unique_ptr<DataInspectorProxyService> create(DeviceSpec const& spec, const std::string& address, int port);
+  static std::unique_ptr<DataInspectorProxyService> create(DeviceSpec const& spec, const std::string& address, int port, const std::string& id);
 
   void receive();
   void send(DIMessage&& message);
