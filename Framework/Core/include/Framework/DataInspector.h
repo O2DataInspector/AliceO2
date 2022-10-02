@@ -15,7 +15,7 @@ namespace o2::framework::DataInspector
 /* Checks if a command line argument relates to the data inspector. */
 inline bool isInspectorArgument(const char* argument)
 {
-  return std::strstr(argument, "--inspector") != nullptr;
+  return std::strcmp(argument, "--inspector") == 0;
 }
 
 /* Checks if device is used by the data inspector */
