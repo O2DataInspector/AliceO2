@@ -2,12 +2,13 @@
 #include "Framework/ServiceSpec.h"
 #include "Framework/ServiceRegistry.h"
 #include "Framework/DeviceSpec.h"
+#include "Framework/DIMessages.h"
 
 namespace o2::framework
 {
 DataInspectorProxyService::DataInspectorProxyService(const std::string& deviceName, const std::string& address, int port, const std::string& id) : deviceName(deviceName), socket(DISocket::connect(address, port)), id(id)
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, std::string(deviceName)});
+  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, DIMessages::RegisterDevice{deviceName, id, {{}, {}, {}, 1, 2, 3, 4}}});
 }
 
 DataInspectorProxyService::~DataInspectorProxyService()
