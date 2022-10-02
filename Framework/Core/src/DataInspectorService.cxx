@@ -6,9 +6,73 @@
 
 namespace o2::framework
 {
-DataInspectorProxyService::DataInspectorProxyService(const std::string& deviceName, const std::string& address, int port, const std::string& id) : deviceName(deviceName), socket(DISocket::connect(address, port)), id(id)
+DataInspectorProxyService::DataInspectorProxyService(DeviceSpec const& spec, const std::string& address, int port, const std::string& id) : deviceName(spec.name), socket(DISocket::connect(address, port)), id(id)
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, DIMessages::RegisterDevice{deviceName, id, {{}, {}, {}, 1, 2, 3, 4}}});
+  DIMessages::RegisterDevice msg;
+  msg.name = spec.name;
+  msg.analysisId = id;
+
+  msg.specs.inputs = std::vector<DIMessages::RegisterDevice::Specs::Input>{};
+  std::transform(spec.inputs.begin(), spec.inputs.end(), std::back_inserter(msg.specs.inputs), [](const InputRoute& input) -> DIMessages::RegisterDevice::Specs::Input{
+    auto dataDescriptorMatcher = input.matcher.matcher.index() == 1;
+    auto origin = dataDescriptorMatcher ? "" : std::get<ConcreteDataMatcher>(input.matcher.matcher).origin.str;
+    auto description = dataDescriptorMatcher ? "" : std::get<ConcreteDataMatcher>(input.matcher.matcher).description.str;
+    auto subSpec = dataDescriptorMatcher ? 0 : std::get<ConcreteDataMatcher>(input.matcher.matcher).subSpec;
+
+    return DIMessages::RegisterDevice::Specs::Input{
+      .binding = input.matcher.binding,
+      .sourceChannel = input.sourceChannel,
+      .timeslice = input.timeslice,
+      .dataDescriptorMatcher = dataDescriptorMatcher,
+      .origin = origin,
+      .description = description,
+      .subSpec = subSpec
+    };
+  });
+
+  msg.specs.outputs = std::vector<DIMessages::RegisterDevice::Specs::Output>{};
+  std::transform(spec.outputs.begin(), spec.outputs.end(), std::back_inserter(msg.specs.outputs), [](const OutputRoute& output) -> DIMessages::RegisterDevice::Specs::Output{
+    auto index = output.matcher.matcher.index();
+    auto origin = index == 0 ? std::get<ConcreteDataMatcher>(output.matcher.matcher).origin.str : std::get<ConcreteDataTypeMatcher>(output.matcher.matcher).origin.str;
+    auto description = index == 0 ? std::get<ConcreteDataMatcher>(output.matcher.matcher).origin.str : std::get<ConcreteDataTypeMatcher>(output.matcher.matcher).origin.str;
+    auto subSpec = index == 0 ? std::get<ConcreteDataMatcher>(output.matcher.matcher).subSpec : 0;
+
+    return DIMessages::RegisterDevice::Specs::Output{
+      .binding = output.matcher.binding.value,
+      .channel = output.channel,
+      .timeslice = output.timeslice,
+      .maxTimeslices = output.maxTimeslices,
+      .origin = origin,
+      .description = description,
+      .subSpec = subSpec
+    };
+  });
+
+  msg.specs.forwards = std::vector<DIMessages::RegisterDevice::Specs::Forward>{};
+  std::transform(spec.forwards.begin(), spec.forwards.end(), std::back_inserter(msg.specs.forwards), [](const ForwardRoute& forward) -> DIMessages::RegisterDevice::Specs::Forward{
+    auto dataDescriptorMatcher = forward.matcher.matcher.index() == 1;
+    auto origin = dataDescriptorMatcher ? "" : std::get<ConcreteDataMatcher>(forward.matcher.matcher).origin.str;
+    auto description = dataDescriptorMatcher ? "" : std::get<ConcreteDataMatcher>(forward.matcher.matcher).description.str;
+    auto subSpec = dataDescriptorMatcher ? 0 : std::get<ConcreteDataMatcher>(forward.matcher.matcher).subSpec;
+
+    return DIMessages::RegisterDevice::Specs::Forward{
+      .binding = forward.matcher.binding,
+      .timeslice = forward.timeslice,
+      .maxTimeslices = forward.maxTimeslices,
+      .channel = forward.channel,
+      .dataDescriptorMatcher = dataDescriptorMatcher,
+      .origin = origin,
+      .description = description,
+      .subSpec = subSpec
+    };
+  });
+
+  msg.specs.maxInputTimeslices = spec.maxInputTimeslices;
+  msg.specs.inputTimesliceId = spec.inputTimesliceId;
+  msg.specs.nSlots = spec.nSlots;
+  msg.specs.rank = spec.rank;
+
+  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, std::move(msg)});
 }
 
 DataInspectorProxyService::~DataInspectorProxyService()
@@ -19,7 +83,7 @@ DataInspectorProxyService::~DataInspectorProxyService()
 
 std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(DeviceSpec const& spec, const std::string& address, int port, const std::string& id)
 {
-  return std::make_unique<DataInspectorProxyService>(spec.name, address, port, id);
+  return std::make_unique<DataInspectorProxyService>(spec, address, port, id);
 }
 
 void DataInspectorProxyService::receive()
