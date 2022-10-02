@@ -42,7 +42,22 @@ namespace o2::framework::DataInspector
     if (header->payloadSerializationMethod == header::gSerializationMethodROOT) {
       std::unique_ptr<TObject> object = DataRefUtils::as<TObject>(ref);
       TString json = TBufferJSON::ToJSON(object.get());
-      message.AddMember("payload", Value(json.Data(), alloc), alloc);
+
+      Value payloadValue;
+      payloadValue.SetObject();
+
+      Document payloadDocument;
+      payloadDocument.Parse(json.Data());
+      for(auto it = payloadDocument.MemberBegin(); it != payloadDocument.MemberEnd(); it++) {
+        Value name;
+        name.CopyFrom(it->name, alloc);
+        Value val;
+        val.CopyFrom(it->value, alloc);
+
+        payloadValue.AddMember(name, val, alloc);
+      }
+
+      message.AddMember("payload", payloadValue, alloc);
     }
     else if(header->payloadSerializationMethod == header::gSerializationMethodArrow) {
         TableConsumer consumer = TableConsumer(reinterpret_cast<const uint8_t*>(ref.payload), header->payloadSize);
