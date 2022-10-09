@@ -2,48 +2,12 @@
 #define O2_DISOCKET_HPP
 
 #include <cstring>
+#include "Framework/TypeTraits.h"
 #include "boost/asio.hpp"
 #include "boost/endian/conversion.hpp"
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
 #include <sstream>
-
-template <typename... T>
-struct always_static_assert : std::false_type {
-};
-
-template <typename... T>
-inline constexpr bool always_static_assert_v = always_static_assert<T...>::value;
-
-//Base case called by all overloads when needed. Derives from false_type.
-template <typename Type, typename Archive = boost::archive::binary_oarchive, typename = std::void_t<>>
-struct is_boost_serializable_base : std::false_type {
-};
-
-//Check if provided type implements a boost serialize method directly
-template <class Type, typename Archive>
-struct is_boost_serializable_base<Type, Archive,
-                                  std::void_t<decltype(std::declval<Type&>().serialize(std::declval<Archive&>(), 0))>>
-  : std::true_type {
-};
-
-//Base implementation to provided recurrence. Wraps around base templates
-template <class Type, typename Archive = boost::archive::binary_oarchive, typename = std::void_t<>>
-struct is_boost_serializable
-  : is_boost_serializable_base<Type, Archive> {
-};
-
-//Call base implementation in contained class/type if possible
-template <class Type, typename Archive>
-struct is_boost_serializable<Type, Archive, std::void_t<typename Type::value_type>>
-  : is_boost_serializable<typename Type::value_type, Archive> {
-};
-
-//Call base implementation in contained class/type if possible. Added default archive type for convenience
-template <class Type>
-struct is_boost_serializable<Type, boost::archive::binary_oarchive, std::void_t<typename Type::value_type>>
-  : is_boost_serializable<typename Type::value_type, boost::archive::binary_oarchive> {
-};
 
 template <typename T>
 std::tuple<char*, uint64_t> boostSerialize(const T& obj)
@@ -104,12 +68,12 @@ struct DIMessage {
       payload = boost::endian::native_to_little(payload);
       this->payload = new char[header.payloadSize];
       std::memcpy(this->payload, &payload, header.payloadSize);
-    } else if constexpr (is_boost_serializable<T>::value) {
+    } else if constexpr (o2::framework::is_boost_serializable<T>::value) {
       auto [serialized, size] = boostSerialize(payload);
       header.payloadSize = size;
       this->payload = serialized;
     } else {
-      static_assert(always_static_assert_v<T>, "DISocket: Cannot create message of this type.");
+      static_assert(o2::framework::always_static_assert_v<T>, "DISocket: Cannot create message of this type.");
     }
   }
   DIMessage(Header::Type type, const char* data, uint64_t size) : header(type, size) {
@@ -129,10 +93,10 @@ struct DIMessage {
       return std::string{payload, header.payloadSize};
     } else if constexpr (std::is_integral_v<T>) {
       return boost::endian::little_to_native(*((T*) payload));
-    } else if constexpr (is_boost_serializable<T>::value) {
+    } else if constexpr (o2::framework::is_boost_serializable<T>::value) {
       return boostDeserialize<T>(payload, header.payloadSize);
     } else {
-      static_assert(always_static_assert_v<T>, "DISocket: Cannot create object of this type.");
+      static_assert(o2::framework::always_static_assert_v<T>, "DISocket: Cannot create object of this type.");
     }
   }
 
