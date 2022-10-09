@@ -30,6 +30,7 @@
 #include "Framework/DataInspectorService.h"
 #include <arrow/table.h>
 #include "Framework/TableConsumer.h"
+#include "Framework/AlgorithmSpec.h"
 
 using namespace rapidjson;
 
@@ -135,21 +136,26 @@ namespace o2::framework::DataInspector
     return device.name.find("internal") == std::string::npos;
   }
 
-  /* Inject interceptor to check for messages from proxy before running onProcess. */
-  void injectOnProcessInterceptor(DataProcessorSpec& spec)
-  {
-    auto& originalProcAlg = spec.algorithm.onProcess;
-    spec.algorithm.onProcess = [originalProcAlg](ProcessingContext& context) -> void {
-      context.services().get<DataInspectorProxyService>().receive();
-      originalProcAlg(context);
-    };
-  }
-
   void injectInterceptors(WorkflowSpec &workflow)
   {
     for (DataProcessorSpec &device: workflow) {
       if (isNonInternalDevice(device)) {
-        injectOnProcessInterceptor(device);
+        if(device.algorithm.onInit != nullptr) {
+          auto& originalInitAlg = device.algorithm.onInit;
+          device.algorithm.onInit = [originalInitAlg](InitContext& context) -> AlgorithmSpec::ProcessCallback {
+            auto onProcess = originalInitAlg(context);
+            return [onProcess](ProcessingContext& context) -> void {
+              context.services().get<DataInspectorProxyService>().receive();
+              onProcess(context);
+            };
+          };
+        } else {
+          auto& originalProcAlg = device.algorithm.onProcess;
+          device.algorithm.onProcess = [originalProcAlg](ProcessingContext& context) -> void {
+            context.services().get<DataInspectorProxyService>().receive();
+            originalProcAlg(context);
+          };
+        }
       }
     }
   }
