@@ -6,10 +6,10 @@
 
 namespace o2::framework
 {
-DIMessages::RegisterDevice createRegisterMessage(DeviceSpec const& spec, const std::string& id) {
+DIMessages::RegisterDevice createRegisterMessage(DeviceSpec const& spec, const std::string& runId) {
   DIMessages::RegisterDevice msg;
   msg.name = spec.name;
-  msg.analysisId = id;
+  msg.runId = runId;
 
   msg.specs.inputs = std::vector<DIMessages::RegisterDevice::Specs::Input>{};
   std::transform(spec.inputs.begin(), spec.inputs.end(), std::back_inserter(msg.specs.inputs), [](const InputRoute& input) -> DIMessages::RegisterDevice::Specs::Input{
@@ -77,14 +77,14 @@ DIMessages::RegisterDevice createRegisterMessage(DeviceSpec const& spec, const s
 DataInspectorProxyService::DataInspectorProxyService(DeviceSpec const& spec,
                                                      const std::string& address,
                                                      int port,
-                                                     const std::string& id,
+                                                     const std::string& runId,
                                                      bool startInspecting
                                                      ) : deviceName(spec.name),
                                                          socket(DISocket::connect(address, port)),
-                                                         id(id),
+                                                         runId(runId),
                                                          _isInspected(startInspecting)
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, id)});
+  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, runId)});
 }
 
 DataInspectorProxyService::~DataInspectorProxyService()
@@ -96,10 +96,10 @@ DataInspectorProxyService::~DataInspectorProxyService()
 std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(DeviceSpec const& spec,
                                                                              const std::string& address,
                                                                              int port,
-                                                                             const std::string& id,
+                                                                             const std::string& runId,
                                                                              bool startInspecting)
 {
-  return std::make_unique<DataInspectorProxyService>(spec, address, port, id, startInspecting);
+  return std::make_unique<DataInspectorProxyService>(spec, address, port, runId, startInspecting);
 }
 
 void DataInspectorProxyService::receive()
