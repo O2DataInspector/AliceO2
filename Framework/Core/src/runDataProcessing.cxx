@@ -1157,6 +1157,7 @@ int doChild(int argc, char** argv, ServiceRegistry& serviceRegistry,
     // We want to register this service only when '--inspector' option was specified
     if(r.fConfig.GetVarMap()["inspector"].as<bool>() && DataInspector::isNonInternalDevice(spec)) {
       diProxyService = DataInspectorProxyService::create(
+        serviceRegistry,
         spec,
         r.fConfig.GetVarMap()["inspector-address"].as<std::string>(),
         std::stoi(r.fConfig.GetVarMap()["inspector-port"].as<std::string>()),
@@ -2584,10 +2585,6 @@ int doMain(int argc, char** argv, o2::framework::WorkflowSpec const& workflow,
   visibleOptions.add(executorOptions);
 
   auto physicalWorkflow = workflow;
-
-  if (std::any_of(argv, argv + argc, DataInspector::isInspectorArgument)) {
-    DataInspector::injectInterceptors(physicalWorkflow);
-  }
 
   std::map<std::string, size_t> rankIndex;
   // We remove the duplicates because for the moment child get themself twice:

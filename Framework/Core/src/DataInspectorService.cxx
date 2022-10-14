@@ -3,6 +3,7 @@
 #include "Framework/ServiceRegistry.h"
 #include "Framework/DeviceSpec.h"
 #include "Framework/DIMessages.h"
+#include "Framework/ControlService.h"
 
 namespace o2::framework
 {
@@ -74,12 +75,14 @@ DIMessages::RegisterDevice createRegisterMessage(DeviceSpec const& spec, const s
   return msg;
 }
 
-DataInspectorProxyService::DataInspectorProxyService(DeviceSpec const& spec,
+DataInspectorProxyService::DataInspectorProxyService(ServiceRegistry& serviceRegistry,
+                                                     DeviceSpec const& spec,
                                                      const std::string& address,
                                                      int port,
                                                      const std::string& runId,
                                                      bool startInspecting
-                                                     ) : deviceName(spec.name),
+                                                     ) : serviceRegistry(serviceRegistry),
+                                                         deviceName(spec.name),
                                                          socket(DISocket::connect(address, port)),
                                                          runId(runId),
                                                          _isInspected(startInspecting)
@@ -93,13 +96,14 @@ DataInspectorProxyService::~DataInspectorProxyService()
   socket.close();
 }
 
-std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(DeviceSpec const& spec,
+std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(ServiceRegistry& serviceRegistry,
+                                                                             DeviceSpec const& spec,
                                                                              const std::string& address,
                                                                              int port,
                                                                              const std::string& runId,
                                                                              bool startInspecting)
 {
-  return std::make_unique<DataInspectorProxyService>(spec, address, port, runId, startInspecting);
+  return std::make_unique<DataInspectorProxyService>(serviceRegistry, spec, address, port, runId, startInspecting);
 }
 
 void DataInspectorProxyService::receive()
@@ -126,6 +130,11 @@ void DataInspectorProxyService::handleMessage(DIMessage &msg)
     case DIMessage::Header::Type::INSPECT_OFF: {
       LOG(info) << "DIService - INSPECT OFF";
       _isInspected = false;
+      break;
+    }
+    case DIMessage::Header::Type::TERMINATE: {
+      LOG(info) << "DIService - TERMINATE";
+      serviceRegistry.get<ControlService>().readyToQuit(QuitRequest::All);
       break;
     }
     default: {
