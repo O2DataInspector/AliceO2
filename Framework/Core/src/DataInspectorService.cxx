@@ -32,6 +32,7 @@ DIMessages::RegisterDevice createRegisterMessage(DeviceSpec const& spec, const s
 
   msg.specs.outputs = std::vector<DIMessages::RegisterDevice::Specs::Output>{};
   std::transform(spec.outputs.begin(), spec.outputs.end(), std::back_inserter(msg.specs.outputs), [](const OutputRoute& output) -> DIMessages::RegisterDevice::Specs::Output{
+    //TODO
     auto index = output.matcher.matcher.index();
     auto origin = index == 0 ? std::get<ConcreteDataMatcher>(output.matcher.matcher).origin.str : std::get<ConcreteDataTypeMatcher>(output.matcher.matcher).origin.str;
     auto description = index == 0 ? std::get<ConcreteDataMatcher>(output.matcher.matcher).origin.str : std::get<ConcreteDataTypeMatcher>(output.matcher.matcher).origin.str;
@@ -83,7 +84,7 @@ DataInspectorProxyService::DataInspectorProxyService(ServiceRegistry& serviceReg
                                                      bool startInspecting
                                                      ) : serviceRegistry(serviceRegistry),
                                                          deviceName(spec.name),
-                                                         socket(DISocket::connect(address, port)),
+                                                         socket(address, port),
                                                          runId(runId),
                                                          _isInspected(startInspecting)
 {
@@ -93,7 +94,6 @@ DataInspectorProxyService::DataInspectorProxyService(ServiceRegistry& serviceReg
 DataInspectorProxyService::~DataInspectorProxyService()
 {
   socket.send(DIMessage{DIMessage::Header::Type::DEVICE_OFF, std::string{deviceName}});
-  socket.close();
 }
 
 std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(ServiceRegistry& serviceRegistry,
@@ -108,7 +108,7 @@ std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(Ser
 
 void DataInspectorProxyService::receive()
 {
-  if(socket.isReadyToReceive()) {
+  if(socket.isMessageAvailable()) {
     DIMessage msg = socket.receive();
     handleMessage(msg);
   }
@@ -119,9 +119,9 @@ void DataInspectorProxyService::send(DIMessage&& msg)
   socket.send(std::move(msg));
 }
 
-void DataInspectorProxyService::handleMessage(DIMessage &msg)
+void DataInspectorProxyService::handleMessage(const DIMessage &msg)
 {
-  switch (msg.header.type) {
+  switch (msg.header.type()) {
     case DIMessage::Header::Type::INSPECT_ON: {
       LOG(info) << "DIService - INSPECT ON";
       _isInspected = true;
@@ -138,7 +138,7 @@ void DataInspectorProxyService::handleMessage(DIMessage &msg)
       break;
     }
     default: {
-      LOG(info) << "DIService - Wrong msg type: " << static_cast<uint32_t>(msg.header.type);
+      LOG(info) << "DIService - Wrong msg type: " << static_cast<uint32_t>(msg.header.type());
     }
   }
 }
