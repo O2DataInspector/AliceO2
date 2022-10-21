@@ -38,6 +38,7 @@ class DataInspectorProxyService {
 
  private:
   void handleMessage(const DIMessage& msg);
+  void terminate();
 
   const std::string deviceName;
   const std::string runId;
