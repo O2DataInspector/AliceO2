@@ -88,12 +88,22 @@ DataInspectorProxyService::DataInspectorProxyService(ServiceRegistry& serviceReg
                                                          runId(runId),
                                                          _isInspected(startInspecting)
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, runId)});
+  try{
+    socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, runId)});
+  } catch(const std::runtime_error& error) {
+    LOG(ERROR) << error.what();
+    terminate();
+  }
 }
 
 DataInspectorProxyService::~DataInspectorProxyService()
 {
-  socket.send(DIMessage{DIMessage::Header::Type::DEVICE_OFF, std::string{deviceName}});
+  try {
+    socket.send(DIMessage{DIMessage::Header::Type::DEVICE_OFF, std::string{deviceName}});
+  } catch(const std::runtime_error& error) {
+    LOG(ERROR) << error.what();
+    terminate();
+  }
 }
 
 std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(ServiceRegistry& serviceRegistry,
@@ -108,15 +118,25 @@ std::unique_ptr<DataInspectorProxyService> DataInspectorProxyService::create(Ser
 
 void DataInspectorProxyService::receive()
 {
-  if(socket.isMessageAvailable()) {
-    DIMessage msg = socket.receive();
-    handleMessage(msg);
+  try {
+    if(socket.isMessageAvailable()) {
+      DIMessage msg = socket.receive();
+      handleMessage(msg);
+    }
+  } catch(const std::runtime_error& error) {
+    LOG(ERROR) << error.what();
+    terminate();
   }
 }
 
 void DataInspectorProxyService::send(DIMessage&& msg)
 {
-  socket.send(std::move(msg));
+  try {
+    socket.send(std::move(msg));
+  } catch(const std::runtime_error& error) {
+    LOG(ERROR) << error.what();
+    terminate();
+  }
 }
 
 void DataInspectorProxyService::handleMessage(const DIMessage &msg)
@@ -134,12 +154,17 @@ void DataInspectorProxyService::handleMessage(const DIMessage &msg)
     }
     case DIMessage::Header::Type::TERMINATE: {
       LOG(info) << "DIService - TERMINATE";
-      serviceRegistry.get<ControlService>().readyToQuit(QuitRequest::All);
+      terminate();
       break;
     }
     default: {
       LOG(info) << "DIService - Wrong msg type: " << static_cast<uint32_t>(msg.header.type());
     }
   }
+}
+
+void DataInspectorProxyService::terminate()
+{
+  serviceRegistry.get<ControlService>().readyToQuit(QuitRequest::All);
 }
 }
