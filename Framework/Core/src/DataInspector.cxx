@@ -31,11 +31,29 @@
 #include <arrow/table.h>
 #include "Framework/TableConsumer.h"
 #include "Framework/AlgorithmSpec.h"
+#include "boost/archive/iterators/base64_from_binary.hpp"
+#include "boost/archive/iterators/transform_width.hpp"
+#include "boost/predef/other/endian.h"
 
 using namespace rapidjson;
 
 namespace o2::framework::DataInspector
 {
+  inline size_t base64PaddingSize(uint64_t dataSize)
+  {
+    return (3 - dataSize % 3) % 3;
+  }
+
+  std::string encode64(const char* data, uint64_t size)
+  {
+    auto* begin = data;
+    auto* end = data + size;
+
+    using namespace boost::archive::iterators;
+    using EncodingIt = base64_from_binary<transform_width<const char*, 6, 8>>;
+    return std::string(EncodingIt(begin), EncodingIt(end)).append(base64PaddingSize(size), '=');
+  }
+
   void addPayload(Document& message,
                   const header::DataHeader* header,
                   const DataRef& ref,
@@ -65,9 +83,20 @@ namespace o2::framework::DataInspector
       message.AddMember("payload", payloadValue, alloc);
     }
     else if(header->payloadSerializationMethod == header::gSerializationMethodArrow) {
-        TableConsumer consumer = TableConsumer(reinterpret_cast<const uint8_t*>(ref.payload), header->payloadSize);
-        auto table = consumer.asArrowTable();
-        message.AddMember("payload", Value(table->ToString().c_str(), alloc), alloc);
+      TableConsumer consumer = TableConsumer(reinterpret_cast<const uint8_t*>(ref.payload), header->payloadSize);
+      auto table = consumer.asArrowTable();
+      message.AddMember("payload", Value(table->ToString().c_str(), alloc), alloc);
+    } else {
+      message.AddMember("payload", Value(encode64(ref.payload, header->payloadSize).c_str(), alloc), alloc);
+
+      #if BOOST_ENDIAN_BIG_BYTE
+      auto endianness = "BIG";
+      #elif BOOST_ENDIAN_LITTLE_BYTE
+      auto endianness = "LITTLE";
+      #else
+      auto endianness = "UNKNOWN";
+      #endif
+      message.AddMember("payloadEndianness", Value(endianness, alloc), alloc);
     }
   }
 
