@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include "boost/serialization/vector.hpp"
+#include "boost/serialization/optional.hpp"
 
 namespace DIMessages
 {
@@ -21,10 +22,9 @@ struct RegisterDevice
       std::string sourceChannel;
       size_t timeslice;
 
-      bool dataDescriptorMatcher;
-      std::string origin;
-      std::string description;
-      uint32_t subSpec;
+      boost::optional<std::string> origin;
+      boost::optional<std::string> description;
+      boost::optional<uint32_t> subSpec;
 
       template<class Archive>
       void serialize(Archive & ar, const unsigned int version)
@@ -32,7 +32,6 @@ struct RegisterDevice
         ar & binding;
         ar & sourceChannel;
         ar & timeslice;
-        ar & dataDescriptorMatcher;
         ar & origin;
         ar & description;
         ar & subSpec;
@@ -48,7 +47,7 @@ struct RegisterDevice
 
       std::string origin;
       std::string description;
-      uint32_t subSpec;
+      boost::optional<uint32_t> subSpec;
 
       template<class Archive>
       void serialize(Archive & ar, const unsigned int version)
@@ -70,10 +69,9 @@ struct RegisterDevice
       size_t maxTimeslices;
       std::string channel;
 
-      bool dataDescriptorMatcher;
-      std::string origin;
-      std::string description;
-      uint32_t subSpec;
+      boost::optional<std::string> origin;
+      boost::optional<std::string> description;
+      boost::optional<uint32_t> subSpec;
 
       template<class Archive>
       void serialize(Archive & ar, const unsigned int version)
@@ -82,7 +80,6 @@ struct RegisterDevice
         ar & timeslice;
         ar & maxTimeslices;
         ar & channel;
-        ar & dataDescriptorMatcher;
         ar & origin;
         ar & description;
         ar & subSpec;
