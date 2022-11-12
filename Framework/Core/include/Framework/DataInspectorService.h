@@ -17,20 +17,13 @@ namespace o2::framework
  */
 class DataInspectorProxyService {
  public:
-  DataInspectorProxyService(ServiceRegistry& serviceRegistry,
+  DataInspectorProxyService(ServiceRegistryRef serviceRegistry,
                             DeviceSpec const& spec,
                             const std::string& address,
                             int port,
                             const std::string& runId,
                             bool startInspecting);
   ~DataInspectorProxyService();
-
-  static std::unique_ptr<DataInspectorProxyService> create(ServiceRegistry& serviceRegistry,
-                                                           DeviceSpec const& spec,
-                                                           const std::string& address,
-                                                           int port,
-                                                           const std::string& runId,
-                                                           bool startInspecting);
 
   void receive();
   void send(DIMessage&& message);
@@ -46,7 +39,7 @@ class DataInspectorProxyService {
   bool _isInspected = false;
   DISocket socket;
 
-  ServiceRegistry& serviceRegistry;
+  ServiceRegistryRef serviceRegistry;
 };
 }
 
