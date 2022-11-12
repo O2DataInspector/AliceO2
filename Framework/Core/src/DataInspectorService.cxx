@@ -104,7 +104,7 @@ DataInspectorProxyService::DataInspectorProxyService(ServiceRegistry& serviceReg
                                                          _isInspected(startInspecting)
 {
   try{
-    socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, runId)});
+    socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, runId).toJson()});
   } catch(const std::runtime_error& error) {
     LOG(error) << error.what();
     terminate();
