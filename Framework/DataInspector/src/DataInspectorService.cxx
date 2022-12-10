@@ -206,24 +206,25 @@ ServiceSpec* DIServicePlugin::create()
             diService.receive(); // Check for messages from proxy
 
             // Check if message is inspected and prepare DataRefs for processing
-            if(diService.isInspected()){
-              std::vector<DataRef> refs{};
+            if (diService.isInspected()) {
+              std::vector <DataRef> refs{};
               int i = 0;
               while (i < parts.Size()) {
-                auto header = o2::header::get<o2::header::DataHeader*>((char*)parts.At(i)->GetData());
+                auto header = o2::header::get<o2::header::DataHeader *>((char *) parts.At(i)->GetData());
 
-                int payloadParts = (int)header->splitPayloadParts;
+                int payloadParts = (int) header->splitPayloadParts;
                 int lastPart = i + payloadParts;
                 while (i < lastPart) {
                   i++;
-                  refs.push_back(DataRef{nullptr, (char*)parts.At(0)->GetData(), (char*)parts.At(i)->GetData(), parts.At(i)->GetSize()});
+                  refs.push_back(DataRef{nullptr, (char *) parts.At(0)->GetData(), (char *) parts.At(i)->GetData(),
+                                         parts.At(i)->GetSize()});
                 }
                 i++;
               }
 
               // Send copy to proxy
-              auto proxyMessages = DataInspector::serializeO2Messages(refs, registry.get<DeviceSpec const>().name);
-              for(auto& proxyMessage : proxyMessages) {
+              auto proxyMessages = DataInspector::serializeO2Messages(refs, registry.get < DeviceSpec const>().name);
+              for (auto &proxyMessage: proxyMessages) {
                 diService.send(std::move(proxyMessage));
               }
             } },
