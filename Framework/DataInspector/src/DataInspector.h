@@ -13,7 +13,7 @@
 
 #include "Framework/DeviceSpec.h"
 #include "Framework/WorkflowSpec.h"
-#include "Framework/DataInspectorService.h"
+#include "DISocket.h"
 
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQParts.h>
@@ -44,7 +44,7 @@ inline bool isNonInternalDevice(const DeviceSpec& spec)
   return spec.name.find("internal") == std::string::npos;
 }
 
-void sendToProxy(DataInspectorProxyService& diProxyService, const std::vector<DataRef>& refs, const std::string& deviceName);
+std::vector<DIMessage> serializeO2Messages(const std::vector<DataRef>& refs, const std::string& deviceName);
 }
 
 #endif //O2_DATAINSPECTOR_H

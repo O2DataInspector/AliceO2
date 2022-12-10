@@ -12,7 +12,7 @@
 #define O2_DATAINSPECTORSERVICE_H
 
 #include <fairlogger/Logger.h>
-#include "DISocket.hpp"
+#include "DISocket.h"
 #include "Framework/RoutingIndices.h"
 #include "Framework/FairMQDeviceProxy.h"
 #include "Framework/ServiceSpec.h"
@@ -31,8 +31,7 @@ class DataInspectorProxyService {
                             DeviceSpec const& spec,
                             const std::string& address,
                             int port,
-                            const std::string& runId,
-                            bool startInspecting);
+                            const std::string& runId);
   ~DataInspectorProxyService();
 
   void receive();
@@ -50,6 +49,10 @@ class DataInspectorProxyService {
   DISocket socket;
 
   ServiceRegistryRef serviceRegistry;
+};
+
+struct DIServicePlugin : public ServicePlugin {
+  auto create() -> ServiceSpec* final;
 };
 }
 
