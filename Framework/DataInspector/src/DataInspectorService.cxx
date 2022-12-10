@@ -104,11 +104,10 @@ DataInspectorProxyService::DataInspectorProxyService(ServiceRegistryRef serviceR
                                                      DeviceSpec const& spec,
                                                      const std::string& address,
                                                      int port,
-                                                     const std::string& runId
-                                                     ) : serviceRegistry(serviceRegistry),
-                                                         deviceName(spec.name),
-                                                         socket(address, port),
-                                                         runId(runId)
+                                                     const std::string& runId) : serviceRegistry(serviceRegistry),
+                                                                                 deviceName(spec.name),
+                                                                                 socket(address, port),
+                                                                                 runId(runId)
 {
   try {
     socket.send(DIMessage{DIMessage::Header::Type::DEVICE_ON, createRegisterMessage(spec, runId).toJson()});
